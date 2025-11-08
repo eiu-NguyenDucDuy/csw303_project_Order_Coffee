@@ -114,8 +114,37 @@ let appliedDiscount = 0;
 let appliedReward = null;
 let currentOrderItem = null;
 
+// --- Payment System Setup ---
+let paymentHistory = [];
+
+function addPaymentRecord(amount, method) {
+    const timestamp = new Date().toLocaleString();
+    const record = { amount, method, timestamp };
+    paymentHistory.push(record);
+    updatePaymentHistoryDisplay();
+}
+
+function updatePaymentHistoryDisplay() {
+    const historyList = document.getElementById('historyList');
+    if (!historyList) return;
+
+    if (paymentHistory.length === 0) {
+        historyList.innerHTML = "<p>No payments made yet.</p>";
+        return;
+    }
+
+    historyList.innerHTML = paymentHistory.map(record => `
+        <div class="history-item">
+            <span>${record.timestamp}</span>
+            <span>${record.method}</span>
+            <span>$${record.amount.toFixed(2)}</span>
+        </div>
+    `).join('');
+}
+
+
 // Initialize
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     renderMenu('all');
     setupEventListeners();
     loadUserData();
@@ -128,8 +157,8 @@ function renderMenu(filter) {
     const menuGrid = document.getElementById('menuGrid');
     menuGrid.innerHTML = '';
 
-    const filteredItems = filter === 'all' 
-        ? menuItems 
+    const filteredItems = filter === 'all'
+        ? menuItems
         : menuItems.filter(item => item.category === filter);
 
     filteredItems.forEach(item => {
@@ -195,13 +224,13 @@ function addToCart(itemId) {
 // Open Order Detail Modal
 function openOrderDetail(itemId) {
     currentOrderItem = menuItems.find(i => i.id === itemId);
-    
+
     document.getElementById('orderDetailTitle').textContent = `Customize Your ${currentOrderItem.name}`;
     document.getElementById('detailImage').style.background = currentOrderItem.image;
     document.getElementById('detailName').textContent = currentOrderItem.name;
     document.getElementById('detailDescription').textContent = currentOrderItem.description;
     document.getElementById('detailPrice').textContent = `Base Price: $${currentOrderItem.price.toFixed(2)}`;
-    
+
     // Show ice option only for iced drinks
     const iceGroup = document.getElementById('iceGroup');
     if (currentOrderItem.category === 'iced') {
@@ -209,12 +238,12 @@ function openOrderDetail(itemId) {
     } else {
         iceGroup.style.display = 'none';
     }
-    
+
     // Reset form
     document.getElementById('orderDetailForm').reset();
     document.getElementById('detailQuantity').textContent = '1';
     document.getElementById('orderNotes').value = '';
-    
+
     updateDetailTotal();
     document.getElementById('orderDetailModal').style.display = 'block';
 }
@@ -222,27 +251,27 @@ function openOrderDetail(itemId) {
 // Update Detail Total
 function updateDetailTotal() {
     if (!currentOrderItem) return;
-    
+
     let total = currentOrderItem.price;
     const form = document.getElementById('orderDetailForm');
-    
+
     // Add size cost
     const size = form.querySelector('input[name="size"]:checked').value;
     if (size === 'Medium') total += 0.50;
     if (size === 'Large') total += 1.00;
-    
+
     // Add milk cost
     const milk = form.querySelector('input[name="milk"]:checked').value;
     if (milk !== 'Regular') total += 0.50;
-    
+
     // Add extra shots cost
     const extraShots = parseInt(form.querySelector('input[name="extraShots"]:checked').value);
     total += extraShots * 0.75;
-    
+
     // Multiply by quantity
     const quantity = parseInt(document.getElementById('detailQuantity').textContent);
     total *= quantity;
-    
+
     document.getElementById('detailTotal').textContent = `$${total.toFixed(2)}`;
 }
 
@@ -339,7 +368,7 @@ function updateOrderSummary() {
         return sum + (price * item.quantity);
     }, 0);
     const tax = subtotal * 0.1;
-    
+
     // Calculate discount based on reward type
     let finalDiscount = 0;
     if (appliedReward) {
@@ -349,14 +378,14 @@ function updateOrderSummary() {
             finalDiscount = appliedDiscount;
         }
     }
-    
+
     const total = Math.max(0, subtotal + tax - finalDiscount);
 
     document.getElementById('subtotal').textContent = `$${subtotal.toFixed(2)}`;
     document.getElementById('tax').textContent = `$${tax.toFixed(2)}`;
     document.getElementById('discount').textContent = `-$${finalDiscount.toFixed(2)}`;
     document.getElementById('total').textContent = `$${total.toFixed(2)}`;
-    
+
     // Display applied reward
     displayAppliedReward();
 }
@@ -366,7 +395,7 @@ function setupEventListeners() {
     // Filter buttons
     const filterBtns = document.querySelectorAll('.filter-btn');
     filterBtns.forEach(btn => {
-        btn.addEventListener('click', function() {
+        btn.addEventListener('click', function () {
             filterBtns.forEach(b => b.classList.remove('active'));
             this.classList.add('active');
             renderMenu(this.dataset.filter);
@@ -375,7 +404,7 @@ function setupEventListeners() {
 
     // Navigation
     document.querySelectorAll('.nav-link').forEach(link => {
-        link.addEventListener('click', function(e) {
+        link.addEventListener('click', function (e) {
             if (this.getAttribute('href').startsWith('#')) {
                 e.preventDefault();
                 document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
@@ -388,7 +417,7 @@ function setupEventListeners() {
     setupModalListeners();
 
     // Checkout
-    document.getElementById('checkoutBtn').addEventListener('click', function() {
+    document.getElementById('checkoutBtn').addEventListener('click', function () {
         if (cart.length === 0) {
             showNotification('Your cart is empty!');
             return;
@@ -403,30 +432,41 @@ function setupModalListeners() {
 
     // Close buttons
     document.querySelectorAll('.close').forEach(closeBtn => {
-        closeBtn.addEventListener('click', function() {
+        closeBtn.addEventListener('click', function () {
             this.closest('.modal').style.display = 'none';
         });
     });
 
     // Click outside to close
-    window.addEventListener('click', function(e) {
+    window.addEventListener('click', function (e) {
         if (e.target.classList.contains('modal')) {
             e.target.style.display = 'none';
         }
     });
 
     // Payment Form
-    document.getElementById('paymentForm').addEventListener('submit', function(e) {
+    document.getElementById('paymentForm').addEventListener('submit', function (e) {
         e.preventDefault();
-        handlePayment();
+
+        // Assume paymentTotal is already calculated
+        const amount = parseFloat(document.getElementById('paymentTotal').textContent.replace('$', ''));
+        const method = document.querySelector('.payment-method.active').dataset.method;
+
+        addPaymentRecord(amount, method);
+
+        // Clear cart, close modal, show notification...
+        cart = [];
+        updateCart();
+        document.getElementById('paymentModal').style.display = 'none';
+        showNotification('Payment completed!');
     });
 
     // Payment Methods
     document.querySelectorAll('.payment-method').forEach(method => {
-        method.addEventListener('click', function() {
+        method.addEventListener('click', function () {
             document.querySelectorAll('.payment-method').forEach(m => m.classList.remove('active'));
             this.classList.add('active');
-            
+
             const cardDetails = document.getElementById('cardDetails');
             if (this.dataset.method === 'card') {
                 cardDetails.style.display = 'block';
@@ -437,7 +477,7 @@ function setupModalListeners() {
     });
 
     // Order Detail Form
-    document.getElementById('orderDetailForm').addEventListener('submit', function(e) {
+    document.getElementById('orderDetailForm').addEventListener('submit', function (e) {
         e.preventDefault();
         handleOrderDetailSubmit();
     });
@@ -455,17 +495,17 @@ function loadUserData() {
         currentUser = JSON.parse(savedUser);
         userPoints = currentUser.points || 0;
         document.getElementById('userPoints').textContent = userPoints;
-        
+
         const signInBtn = document.getElementById('signInBtn');
         signInBtn.textContent = `Hi, ${currentUser.name}`;
         signInBtn.href = '#';
-        
+
         // Remove old event listeners by cloning
         const newSignInBtn = signInBtn.cloneNode(true);
         signInBtn.parentNode.replaceChild(newSignInBtn, signInBtn);
-        
+
         // Add new event listener
-        newSignInBtn.addEventListener('click', function(e) {
+        newSignInBtn.addEventListener('click', function (e) {
             e.preventDefault();
             showUserMenu();
         });
@@ -476,23 +516,23 @@ function loadUserData() {
 function checkLoginStatus() {
     const savedUser = localStorage.getItem('currentUser') || sessionStorage.getItem('currentUser');
     console.log('Checking login status:', savedUser);
-    
+
     if (savedUser) {
         currentUser = JSON.parse(savedUser);
         userPoints = currentUser.points || 0;
         document.getElementById('userPoints').textContent = userPoints;
-        
+
         const signInBtn = document.getElementById('signInBtn');
         console.log('User logged in:', currentUser.name);
         signInBtn.textContent = `Hi, ${currentUser.name}`;
         signInBtn.href = '#';
-        
+
         // Remove old event listeners by cloning
         const newSignInBtn = signInBtn.cloneNode(true);
         signInBtn.parentNode.replaceChild(newSignInBtn, signInBtn);
-        
+
         // Add new event listener
-        newSignInBtn.addEventListener('click', function(e) {
+        newSignInBtn.addEventListener('click', function (e) {
             e.preventDefault();
             showUserMenu();
         });
@@ -508,19 +548,19 @@ function showUserMenu() {
         sessionStorage.removeItem('currentUser');
         currentUser = null;
         userPoints = 0;
-        
+
         // Reset sign in button
         const signInBtn = document.getElementById('signInBtn');
         signInBtn.textContent = 'Sign In';
         signInBtn.href = 'admin-login.html';
-        
+
         // Remove old event listeners by cloning
         const newSignInBtn = signInBtn.cloneNode(true);
         signInBtn.parentNode.replaceChild(newSignInBtn, signInBtn);
-        
+
         document.getElementById('userPoints').textContent = '0';
         showNotification('Logged out successfully!');
-        
+
         // Clear cart and rewards
         cart = [];
         appliedDiscount = 0;
@@ -539,74 +579,98 @@ function openPaymentModal() {
 }
 
 // Handle Payment
-function handlePayment() {
-    const paymentMethod = document.querySelector('.payment-method.active').dataset.method;
-    
-    if (paymentMethod === 'card') {
-        const cardNumber = document.getElementById('cardNumber').value;
-        const expiry = document.getElementById('expiry').value;
-        const cvv = document.getElementById('cvv').value;
-
-        if (!cardNumber || !expiry || !cvv) {
-            showNotification('Please fill in all card details!');
-            return;
-        }
-    }
-
-    // Process payment
-    const subtotal = parseFloat(document.getElementById('subtotal').textContent.replace('$', ''));
-    const tax = parseFloat(document.getElementById('tax').textContent.replace('$', ''));
-    const discount = parseFloat(document.getElementById('discount').textContent.replace('-$', ''));
-    const total = parseFloat(document.getElementById('total').textContent.replace('$', ''));
-    const pointsEarned = Math.floor(total);
-
-    // Create order object for admin
-    const order = {
-        id: 'ORD' + Date.now(),
-        customerName: currentUser ? currentUser.name : 'Guest',
-        customerEmail: currentUser ? currentUser.email : 'guest@example.com',
-        items: JSON.parse(JSON.stringify(cart)), // Deep copy
-        subtotal: subtotal,
-        tax: tax,
-        discount: discount,
-        total: total,
-        status: 'pending',
-        date: new Date().toISOString(),
-        paymentMethod: paymentMethod
+function Pay(user, amount, description) {
+    const payment = {
+        user: user,
+        amount: amount,
+        description: description,
+        date: new Date().toLocaleString()
     };
 
-    // Save order to admin orders
-    const adminOrders = JSON.parse(localStorage.getItem('adminOrders') || '[]');
-    adminOrders.push(order);
-    localStorage.setItem('adminOrders', JSON.stringify(adminOrders));
+    paymentHistory.push(payment);
+    localStorage.setItem('paymentHistory', JSON.stringify(paymentHistory));
 
-    if (currentUser) {
-        userPoints += pointsEarned;
-        currentUser.points = userPoints;
-        
-        const users = JSON.parse(localStorage.getItem('users') || '[]');
-        const userIndex = users.findIndex(u => u.email === currentUser.email);
-        if (userIndex !== -1) {
-            users[userIndex].points = userPoints;
-            localStorage.setItem('users', JSON.stringify(users));
-        }
-        localStorage.setItem('currentUser', JSON.stringify(currentUser));
-        
-        document.getElementById('userPoints').textContent = userPoints;
-    }
-
-    // Clear cart and rewards
-    cart = [];
-    appliedDiscount = 0;
-    appliedReward = null;
-    updateCart();
-
-    document.getElementById('paymentModal').style.display = 'none';
-    showNotification(`Payment successful! Order ${order.id} created. You earned ${pointsEarned} points!`);
-    
-    // Scroll to top
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    alert(`Payment successful!\nUser: ${user}\nAmount: $${amount}\nDesc: ${description}`);
 }
+
+function handlePayment() {
+    const user = prompt("Enter your name:");
+    const amountStr = prompt("Enter amount to pay:");
+    const amount = parseFloat(amountStr);
+    if (isNaN(amount) || amount <= 0) {
+        alert("Invalid amount!");
+        return;
+    }
+    const description = prompt("Enter payment description:");
+
+    Pay(user, amount, description);
+}
+
+function ViewPaymentHistory() {
+    if (paymentHistory.length === 0) {
+        alert("No payments yet.");
+    } else {
+        let historyStr = "Payment History:\n\n";
+        paymentHistory.forEach((p, i) => {
+            historyStr += `${i + 1}. ${p.date} - ${p.user} - $${p.amount} - ${p.description}\n`;
+        });
+        alert(historyStr);
+    }
+}
+
+// Process payment
+const subtotal = parseFloat(document.getElementById('subtotal').textContent.replace('$', ''));
+const tax = parseFloat(document.getElementById('tax').textContent.replace('$', ''));
+const discount = parseFloat(document.getElementById('discount').textContent.replace('-$', ''));
+const total = parseFloat(document.getElementById('total').textContent.replace('$', ''));
+const pointsEarned = Math.floor(total);
+
+// Create order object for admin
+const order = {
+    id: 'ORD' + Date.now(),
+    customerName: currentUser ? currentUser.name : 'Guest',
+    customerEmail: currentUser ? currentUser.email : 'guest@example.com',
+    items: JSON.parse(JSON.stringify(cart)), // Deep copy
+    subtotal: subtotal,
+    tax: tax,
+    discount: discount,
+    total: total,
+    status: 'pending',
+    date: new Date().toISOString(),
+    paymentMethod: paymentMethod
+};
+
+// Save order to admin orders
+const adminOrders = JSON.parse(localStorage.getItem('adminOrders') || '[]');
+adminOrders.push(order);
+localStorage.setItem('adminOrders', JSON.stringify(adminOrders));
+
+if (currentUser) {
+    userPoints += pointsEarned;
+    currentUser.points = userPoints;
+
+    const users = JSON.parse(localStorage.getItem('users') || '[]');
+    const userIndex = users.findIndex(u => u.email === currentUser.email);
+    if (userIndex !== -1) {
+        users[userIndex].points = userPoints;
+        localStorage.setItem('users', JSON.stringify(users));
+    }
+    localStorage.setItem('currentUser', JSON.stringify(currentUser));
+
+    document.getElementById('userPoints').textContent = userPoints;
+}
+
+// Clear cart and rewards
+cart = [];
+appliedDiscount = 0;
+appliedReward = null;
+updateCart();
+
+document.getElementById('paymentModal').style.display = 'none';
+showNotification(`Payment successful! Order ${order.id} created. You earned ${pointsEarned} points!`);
+
+// Scroll to top
+window.scrollTo({ top: 0, behavior: 'smooth' });
 
 // Render Rewards
 function renderRewards() {
@@ -615,14 +679,14 @@ function renderRewards() {
     if (pointsDisplay) {
         pointsDisplay.textContent = userPoints;
     }
-    
+
     const rewardItems = document.getElementById('rewardItems');
     rewardItems.innerHTML = rewardsData.map(reward => {
         const isApplied = appliedReward && appliedReward.id === reward.id;
         const canRedeem = userPoints >= reward.points && !isApplied;
         const buttonText = isApplied ? 'Applied ✓' : 'Redeem';
         const buttonClass = isApplied ? 'redeem-btn applied' : 'redeem-btn';
-        
+
         return `
             <div class="reward-item ${isApplied ? 'reward-applied' : ''}">
                 <div class="reward-info">
@@ -659,12 +723,12 @@ function redeemReward(rewardId) {
     }
 
     const reward = rewardsData.find(r => r.id === rewardId);
-    
+
     if (userPoints >= reward.points) {
         userPoints -= reward.points;
         appliedDiscount = reward.discount;
         appliedReward = reward;
-        
+
         if (currentUser) {
             currentUser.points = userPoints;
             const users = JSON.parse(localStorage.getItem('users') || '[]');
@@ -675,7 +739,7 @@ function redeemReward(rewardId) {
             }
             localStorage.setItem('currentUser', JSON.stringify(currentUser));
         }
-        
+
         document.getElementById('userPoints').textContent = userPoints;
         updateOrderSummary();
         renderRewards();
@@ -691,7 +755,7 @@ function removeReward(rewardId) {
         userPoints += appliedReward.points;
         appliedDiscount = 0;
         appliedReward = null;
-        
+
         if (currentUser) {
             currentUser.points = userPoints;
             const users = JSON.parse(localStorage.getItem('users') || '[]');
@@ -702,7 +766,7 @@ function removeReward(rewardId) {
             }
             localStorage.setItem('currentUser', JSON.stringify(currentUser));
         }
-        
+
         document.getElementById('userPoints').textContent = userPoints;
         updateOrderSummary();
         renderRewards();
@@ -714,13 +778,13 @@ function removeReward(rewardId) {
 function displayAppliedReward() {
     const discountElement = document.getElementById('discount');
     const discountContainer = discountElement.parentElement;
-    
+
     // Remove previous reward display if exists
     const existingRewardDisplay = document.querySelector('.applied-reward-info');
     if (existingRewardDisplay) {
         existingRewardDisplay.remove();
     }
-    
+
     if (appliedReward) {
         const rewardInfo = document.createElement('div');
         rewardInfo.className = 'applied-reward-info';
@@ -770,14 +834,14 @@ function showNotification(message) {
 }
 
 // Format Card Number
-document.getElementById('cardNumber')?.addEventListener('input', function(e) {
+document.getElementById('cardNumber')?.addEventListener('input', function (e) {
     let value = e.target.value.replace(/\s/g, '');
     let formattedValue = value.match(/.{1,4}/g)?.join(' ') || value;
     e.target.value = formattedValue;
 });
 
 // Format Expiry Date
-document.getElementById('expiry')?.addEventListener('input', function(e) {
+document.getElementById('expiry')?.addEventListener('input', function (e) {
     let value = e.target.value.replace(/\D/g, '');
     if (value.length >= 2) {
         value = value.slice(0, 2) + '/' + value.slice(2, 4);
@@ -788,10 +852,10 @@ document.getElementById('expiry')?.addEventListener('input', function(e) {
 // Handle Order Detail Submit
 function handleOrderDetailSubmit() {
     if (!currentOrderItem) return;
-    
+
     const form = document.getElementById('orderDetailForm');
     const quantity = parseInt(document.getElementById('detailQuantity').textContent);
-    
+
     // Get all customizations
     const customizations = {
         size: form.querySelector('input[name="size"]:checked').value,
@@ -800,19 +864,19 @@ function handleOrderDetailSubmit() {
         extraShots: parseInt(form.querySelector('input[name="extraShots"]:checked').value),
         notes: document.getElementById('orderNotes').value.trim()
     };
-    
+
     // Add ice only for iced drinks
     if (currentOrderItem.category === 'iced') {
         customizations.ice = form.querySelector('input[name="ice"]:checked').value;
     }
-    
+
     // Calculate total price per item
     let itemPrice = currentOrderItem.price;
     if (customizations.size === 'Medium') itemPrice += 0.50;
     if (customizations.size === 'Large') itemPrice += 1.00;
     if (customizations.milk !== 'Regular') itemPrice += 0.50;
     itemPrice += customizations.extraShots * 0.75;
-    
+
     // Add to cart
     const cartItem = {
         ...currentOrderItem,
@@ -821,11 +885,44 @@ function handleOrderDetailSubmit() {
         totalPrice: itemPrice,
         uniqueId: Date.now() // To distinguish items with different customizations
     };
-    
+
     cart.push(cartItem);
+
+    // Update cart and order summary
     updateCart();
-    
+    updateOrderSummary();
+    displayAppliedReward();
+    renderRewards();
+
     document.getElementById('orderDetailModal').style.display = 'none';
     showNotification(`${currentOrderItem.name} added to cart!`);
     currentOrderItem = null;
+}
+// Update Order Summary
+function updateOrderSummary() {
+    const subtotalElement = document.getElementById('subtotal');
+    const taxElement = document.getElementById('tax');
+    const discountElement = document.getElementById('discount');
+    const totalElement = document.getElementById('total');
+
+    // Calculate subtotal
+    let subtotal = cart.reduce((sum, item) => sum + item.totalPrice * item.quantity, 0);
+
+    // Calculate discount (from reward)
+    let discount = appliedDiscount || 0;
+
+    // Calculate tax (assume 10% for example)
+    let tax = (subtotal - discount) * 0.1;
+
+    // Calculate total
+    let total = subtotal - discount + tax;
+
+    // Update DOM
+    subtotalElement.textContent = `$${subtotal.toFixed(2)}`;
+    discountElement.textContent = `-$${discount.toFixed(2)}`;
+    taxElement.textContent = `$${tax.toFixed(2)}`;
+    totalElement.textContent = `$${total.toFixed(2)}`;
+
+    // Display applied reward visually
+    displayAppliedReward();
 }

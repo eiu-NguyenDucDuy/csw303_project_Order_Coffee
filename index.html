@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,6 +8,7 @@
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
+
 <body>
     <!-- Navigation -->
     <nav class="navbar">
@@ -219,7 +221,8 @@
                         <!-- Special Notes -->
                         <div class="form-group">
                             <label><i class="fas fa-sticky-note"></i> Special Instructions</label>
-                            <textarea id="orderNotes" rows="3" placeholder="Add any special requests here (e.g., extra hot, less foam, etc.)"></textarea>
+                            <textarea id="orderNotes" rows="3"
+                                placeholder="Add any special requests here (e.g., extra hot, less foam, etc.)"></textarea>
                         </div>
 
                         <!-- Quantity -->
@@ -317,6 +320,17 @@
         </div>
     </div>
 
+    <!-- Payment History Section -->
+    <section id="paymentHistory" class="order-section">
+        <div class="container">
+            <h2 class="section-title">Payment History</h2>
+            <div class="history-container" id="historyList">
+                <p>No payments made yet.</p>
+            </div>
+        </div>
+    </section>
+
+
     <!-- Footer -->
     <footer class="footer">
         <div class="container">
@@ -331,4 +345,5 @@
 
     <script src="script.js"></script>
 </body>
+
 </html>
